@@ -172,11 +172,11 @@ void StraightMovement(long destiny) //No he probado que funcione
   const float RKi = 0.025f;
 
   //Left boundaries
-  minLeftVel = 65;
-  maxLeftVel = 20;
+  int minLeftVel = 65;
+  int maxLeftVel = 20;
   //Right boundaries
-  minRightVel = 65;
-  maxRightVel = 20;
+  int minRightVel = 65;
+  int maxRightVel = 20;
 
   //Variables
   long leftSignal, rightSignal;
