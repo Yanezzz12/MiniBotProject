@@ -88,7 +88,7 @@ void loop()
   //MotorMovement("R", 40);
   //ObstacleAvoidance();
 
-  StraightMovement(500); 
+  //StraightMovement(500); 
 
   //FORWARD;
   //while(true){}
@@ -175,7 +175,7 @@ void StraightMovement(long destiny) //No he probado que funcione
   leftSignal = SignalProcessing(leftSignal, minLeftVel, maxLeftVel);
   MotorMovement("L", leftSignal);
   //Right movement
-  //rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
   rightSignal = SignalProcessing(rightSignal, minRightVel, maxRightVel);
   MotorMovement("R", rightSignal);
 }
@@ -187,11 +187,11 @@ void TurnMovement()
 
 //==========PID functions=========
 
-void PlotPID(long ticks)
+void PlotPID(long goal, long value1, long value2)
 {
-  Serial.print("Target:");      Serial.print(ticks);         Serial.print(",");
-  Serial.print("LeftWheel:");   Serial.print(LeftCount());   Serial.print(",");
-  Serial.print("RightWheel:");  Serial.print(RightCount());  Serial.println(","); 
+  Serial.print("Target:");      Serial.print(goal);         Serial.print(",");
+  Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
+  Serial.print("RightWheel:");  Serial.print(value2);  Serial.println(","); 
 }
 
 void ScrollPID(float distance) //Inactive funtion
