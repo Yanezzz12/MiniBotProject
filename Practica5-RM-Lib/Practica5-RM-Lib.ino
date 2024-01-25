@@ -149,25 +149,19 @@ long PID(long destiny, long currentPosition, long previousError, int index, floa
 
 int SignalProcessing(long signal, int minVelocity, int maxVelocity)
 {
+  if(signal > maxVelocity)
+    signal = maxVelocity;
+  else if((signal < minVelocity) && (signal >= 0))
+    signal = minVelocity;
+  else if((signal < 0) && (signal > -minVelocity))
+    signal = -minVelocity;
+  else if(signal < -maxVelocity)
+    signal = -maxVelocity;
 
-
-
-  if(uFunction[motor] > limitVelocity[motor])
-    uFunction[motor] = limitVelocity[motor];
-  else if((uFunction[motor] < minVelocity[motor]) && (uFunction[motor] >= 0))
-    uFunction[motor] = minVelocity[motor];
-  else if((uFunction[motor] < 0) && (uFunction[motor] > -minVelocity[motor])) 
-    uFunction[motor] = -minVelocity[motor];
-  else if(uFunction[motor] < -limitVelocity[motor])
-    uFunction[motor] = -limitVelocity[motor];
-
-
-
-
-  //return processedSignal;
+  return signal;
 }
 
-void StraightMovement(long destiny)
+void StraightMovement(long destiny) //No he probado que funcione
 {
   //Control constants
   const float LKp = 6.0f;
@@ -177,17 +171,24 @@ void StraightMovement(long destiny)
   const float RKd = 0.004;
   const float RKi = 0.025f;
 
+  //Left boundaries
+  int minLeftVel = 65;
+  int maxLeftVel = 20;
+  //Right boundaries
+  int minRightVel = 65;
+  int maxRightVel = 20;
+
   //Variables
   long leftSignal, rightSignal;
   
   //Left movement
   leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
+  leftSignal = SignalProcessing(leftSignal, minLeftVel, maxLeftVel);
+  MotorMovement("L", leftSignal);
   //Right movement
-  //rightSignal, RPError = PID(destiny, RightCount(), RPError, 0, LKp, LKd, LKi);
-
-  Serial.print("Left signal: ");
-  Serial.println(leftSignal);
-  delay(2000);
+  //rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  rightSignal = SignalProcessing(rightSignal, minRightVel, maxRightVel);
+  MotorMovement("R", rightSignal);
 }
 
 void TurnMovement()
