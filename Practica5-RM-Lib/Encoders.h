@@ -1,7 +1,7 @@
 #ifndef Encoders
 #define Encoders
 
-void SetEncodersInput();
+void EncoderSetup();
 void LeftEncoderInterrupt();
 void RightEncoderInterrupt();
 volatile long LeftCount();

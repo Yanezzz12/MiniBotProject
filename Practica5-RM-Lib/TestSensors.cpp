@@ -9,20 +9,17 @@
 //Sensors
 const byte leftContactSens = 13; 
 const byte rightContactSens = 8; 
-const byte currentBridge = 12;
-const byte leftInfraSens = 19;   
-const byte rightInfraSens = 9;
+const byte leftInfraSens = 19; // (A4)  
+const byte rightInfraSens = 20;// (A5)
 //LDR sensors
 const byte LDR1 = 14; // Yellow   (A0)
 const byte LDR2 = 15; // White    (A1)
 const byte LDR3 = 16; // Orange   (A2)
-const byte LDR4 = 17; // Green    (A3)
-const byte LDR5 = 18; // Purple   (A4)
+const byte LDR4 = 17; // Purple   (A3)
 
 void SensorSetup()
 {
   //Sensors
-  pinMode(currentBridge, OUTPUT);
   pinMode(leftInfraSens, INPUT); 
   pinMode(rightInfraSens, INPUT);
   pinMode(leftContactSens, INPUT_PULLUP);
@@ -32,7 +29,6 @@ void SensorSetup()
   pinMode(LDR2, INPUT);
   pinMode(LDR3, INPUT);
   pinMode(LDR4, INPUT);
-  pinMode(LDR5, INPUT);
 }
 
 void TestEncoders()
@@ -92,18 +88,17 @@ void TestInfrared()
  
 void TestArrayLDR()
 {
-  const byte sensorQuantity = 5;
+  const byte sensorQuantity = 4;
   unsigned int LDRvalue[sensorQuantity];
-  
-  for(byte i = 0; i < sensorQuantity; i++)
-    LDRvalue[i] = analogRead(i + 14);
   
   Serial.print("Valores: ");
   for(byte i = 0; i < sensorQuantity; i++)
   {
+    LDRvalue[i] = analogRead(i + 14);
     Serial.print(LDRvalue[i]);
     Serial.print(", ");
-  }
+  }  
+    
   Serial.println(" ");
   delay(1000);
 }

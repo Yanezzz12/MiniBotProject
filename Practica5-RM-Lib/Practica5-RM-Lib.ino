@@ -31,22 +31,11 @@ const float wheelPerimeter = 13.51f; //cm
 const byte ticksPerRevolution = 300;
 const float distanceAxis = 8.9f; // [cm]
 //Pin setup
+const byte currentBridge = 12;
 const byte leftMotor = 5;  //~ (Goes to 2)
 const byte rightMotor = 6; //~ (Goes to 15)
-const byte vel1 = 10;      //~ (Goes to 1)
-const byte vel2 = 11;      //~ (Goes to 9)
-//Sensors
-const byte leftContactSens = 13; 
-const byte rightContactSens = 8; 
-const byte currentBridge = 12;
-const byte leftInfraSens = 19;   
-const byte rightInfraSens = 9;
-//LDR sensors
-const byte LDR1 = 14; // Yellow   (A0)
-const byte LDR2 = 15; // White    (A1)
-const byte LDR3 = 16; // Orange   (A2)
-const byte LDR4 = 17; // Green    (A3)
-const byte LDR5 = 18; // Purple   (A4)
+const byte pinPWM1 = 10;      //~ (Goes to 1)
+const byte pinPWM2 = 11;      //~ (Goes to 9)
 //PID Control
 
 //Strings
@@ -59,23 +48,23 @@ void setup()
 { 
   Serial.begin(9600);  
   /*===PIN SETUP===*/
-  //Motors
-  pinMode(leftMotor, OUTPUT);
+  //Motor setup
   pinMode(rightMotor, OUTPUT);
-  pinMode(vel1, OUTPUT);
-  pinMode(vel2, OUTPUT);
+  pinMode(leftMotor, OUTPUT);
+  pinMode(pinPWM1, OUTPUT);
+  pinMode(pinPWM2, OUTPUT);
+  pinMode(currentBridge, OUTPUT);
+  //Pin setup
+  SensorSetup();
+  EncoderSetup();
   /*===INITIAL VALUES===*/
   //Turns off motors
-  digitalWrite(vel1, LOW);
-  digitalWrite(vel2, LOW);
+  digitalWrite(pinPWM1, LOW);
+  digitalWrite(pinPWM2, LOW);
   digitalWrite(leftMotor, LOW);
   digitalWrite(rightMotor, LOW);  
   //Activates logic
   digitalWrite(currentBridge, HIGH);  
-  //Sensors
-  SensorSetup();
-  //Encoder setup & interruptions
-  SetEncodersInput();
 }
 
 void loop()
@@ -363,7 +352,7 @@ void MotorMovement(String command, int speedPWM)
   Serial.print(", ");
   Serial.println(speedPWM); // */
 
-  if(command == "L" || command == "R") //Can be tweaked yet
+  if(command == "L" || command == "R") //Can be tweaked
   {
     if(-10 < speedPWM && speedPWM < 10)
     {
@@ -379,30 +368,30 @@ void MotorMovement(String command, int speedPWM)
 
   if(command == "L")
   {
-    digitalWrite(vel1, HIGH);
+    digitalWrite(pinPWM1, HIGH);
     analogWrite(leftMotor, -speedPWM);  
   }
   else if(command == "R")
   {
-    digitalWrite(vel2, HIGH);
+    digitalWrite(pinPWM2, HIGH);
     analogWrite(rightMotor, speedPWM);
   }
   else if(command == "LOFF")
   {
     digitalWrite(leftMotor, LOW);
-    digitalWrite(vel1, LOW); 
+    digitalWrite(pinPWM1, LOW); 
   }
   else if(command == "ROFF")
   {
     digitalWrite(rightMotor, LOW);
-    digitalWrite(vel2, LOW); 
+    digitalWrite(pinPWM2, LOW); 
   }
   else if(command == "OFF")
   {
     digitalWrite(leftMotor, LOW);
-    digitalWrite(vel1, LOW);
+    digitalWrite(pinPWM1, LOW);
     digitalWrite(rightMotor, LOW);
-    digitalWrite(vel2, LOW); 
+    digitalWrite(pinPWM2, LOW); 
   }
   else
     Serial.println("Unknown command!");
@@ -448,18 +437,6 @@ byte MaxLightIndex()
   Serial.println(maxLightIndex); // */
   
   return maxLightIndex;
-}
-
-int LDRArray()
-{
-  //Returns the array of values of light sensors
-  const byte sensorQuantity = 5;
-  int LDRvalue[sensorQuantity];
-
-  for(byte i = 0; i < sensorQuantity; i++) //Checks all LDR values
-    LDRvalue[i] = analogRead(i + 14);
-
-  return LDRvalue;
 }
 
 void ObstacleAvoidance() //Obstacle avoidance algorithm 
