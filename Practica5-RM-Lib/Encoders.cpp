@@ -51,7 +51,7 @@ volatile long RightCount()
   return rightCount;
 }
 
-void SetEncodersInput(){
+void EncoderSetup(){
 	pinMode(leftEncoderA, INPUT);
   pinMode(rightEncoderA, INPUT);
   pinMode(leftEncoderB, INPUT);
