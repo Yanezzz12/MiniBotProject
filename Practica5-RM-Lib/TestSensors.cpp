@@ -9,8 +9,8 @@
 //Sensors
 const byte leftContactSens = 13; 
 const byte rightContactSens = 8; 
-const byte leftInfraSens = 19; // (A4)  
-const byte rightInfraSens = 20;// (A5)
+const byte leftInfraSens = 20; // (A4)  
+const byte rightInfraSens = 19;// (A5)
 //LDR sensors
 const byte LDR1 = 14; // Yellow   (A0)
 const byte LDR2 = 15; // White    (A1)
