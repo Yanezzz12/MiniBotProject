@@ -85,10 +85,10 @@ void loop()
   
   //while(true){} //*/
   
-  //MotorMovement("R", 40);
+  //MotorMovement("R", 45);
   //ObstacleAvoidance();
 
-  //StraightMovement(500); 
+  StraightMovement(8.0f); 
 
   //FORWARD;
   //while(true){}
@@ -103,6 +103,7 @@ void loop()
 long LPError = 0, RPError = 0;
 long previousTime = 0;
 long Iedt = 0;
+long previousError = 0;
 
 long PID(long destiny, long currentPosition, long previousError, int index, float Kp, float Kd, float Ki)
 {  
@@ -112,26 +113,24 @@ long PID(long destiny, long currentPosition, long previousError, int index, floa
   long error;
   double Dedt;
   long signal;
-  
-  //Control boundaries
-  const float tolerance = 4.0f;
 
+  //Calculus operations
   currentTime = micros();
   dt = ((double)(currentTime - previousTime))/(1.0e6);
   previousTime = currentTime;
   error = destiny - currentPosition; //Check*
 
   //Derivative & Integral
-  Dedt = (error - previousError)/(dt);
+  Dedt = (error - previousError)/dt;
   Iedt = Iedt + (error * dt);
+
+  //Control u(t) signal
+  signal = (Kp * error) + (Kd * Dedt) + (Ki * Iedt);
 
   if(index == 0)
     LPError = error;
   if(index == 1)
-    RPError = error;
-
-  //Control u(t) signal
-  signal = (Kp * error) + (Kd * Dedt) + (Ki * Iedt);
+    RPError	 = error;
 
   return signal;
 }
@@ -150,34 +149,57 @@ int SignalProcessing(long signal, int minVelocity, int maxVelocity)
   return signal;
 }
 
-void StraightMovement(long destiny) //No he probado que funcione
+//Function variables
+long startTime = 4000000000;
+
+void StraightMovement(float distance)
 {
+  //Variables
+  long leftSignal, rightSignal, destiny;
+
   //Control constants
-  const float LKp = 6.0f;
-  const float LKd = 0.004;
-  const float LKi = 0.025f;
+  const float LKp = 1.0f;
+  const float LKd = 0.00;
+  const float LKi = 0.0f;
+
   const float RKp = 6.0f;
   const float RKd = 0.004;
   const float RKi = 0.025f;
 
-  //Left boundaries
-  int minLeftVel = 65;
-  int maxLeftVel = 20;
-  //Right boundaries
-  int minRightVel = 65;
-  int maxRightVel = 20;
+  //Velocities
+  int leftVel[2]  = {15, 60};
+  int rightVel[2] = {15, 60};
 
-  //Variables
-  long leftSignal, rightSignal;
-  
-  //Left movement
+  //Inputs
+  const long tolerance = 2;
+  long settlingTime = 1000; //1 segundo
+
+  destiny = DistanceToTicks(distance);
+
+
+  //Signals
   leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
-  leftSignal = SignalProcessing(leftSignal, minLeftVel, maxLeftVel);
-  MotorMovement("L", leftSignal);
-  //Right movement
-  rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
-  rightSignal = SignalProcessing(rightSignal, minRightVel, maxRightVel);
-  MotorMovement("R", rightSignal);
+  //rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
+  //rightSignal = SignalProcessing(rightSignal, , );
+
+  //if(destiny - tolerance < currentPosition < destiny + tolerance)
+  bool leftGoal = ((destiny - tolerance) < LeftCount()) && (LeftCount() < (destiny + tolerance));
+  bool rightGoal = ((destiny - tolerance) < RightCount()) && (RightCount() < (destiny + tolerance));
+
+  if(leftGoal || rightGoal)
+    startTime = micros();
+
+  if(micros() >= startTime + settlingTime) //Correct this fragment
+    MotorMovement("OFF", 0);
+  else
+  {
+    Serial.print("Estoy aqui!");
+    MotorMovement("L", leftSignal);
+    //MotorMovement("R", rightSignal);
+  }
+
+  PlotPID(destiny, LeftCount(), RightCount());
 }
 
 void TurnMovement()
@@ -185,7 +207,6 @@ void TurnMovement()
   Serial.print("Nothing");
 }
 
-//==========PID functions=========
 
 void PlotPID(long goal, long value1, long value2)
 {
@@ -251,6 +272,8 @@ void RotatePID(float angle) //Inactive function
     PlotPID(ticks);
   } // */
 }
+
+//==========PID functions=========
 
 void LightFollowerAlgorithm()
 {
