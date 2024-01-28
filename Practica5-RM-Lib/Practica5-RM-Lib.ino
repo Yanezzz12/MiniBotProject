@@ -85,10 +85,10 @@ void loop()
   
   //while(true){} //*/
   
-  //MotorMovement("R", 40);
+  //MotorMovement("R", 45);
   //ObstacleAvoidance();
 
-  //StraightMovement(500); 
+  StraightMovement(500); 
 
   //FORWARD;
   //while(true){}
@@ -103,6 +103,7 @@ void loop()
 long LPError = 0, RPError = 0;
 long previousTime = 0;
 long Iedt = 0;
+long previousError = 0;
 
 long PID(long destiny, long currentPosition, long previousError, int index, float Kp, float Kd, float Ki)
 {  
@@ -112,26 +113,24 @@ long PID(long destiny, long currentPosition, long previousError, int index, floa
   long error;
   double Dedt;
   long signal;
-  
-  //Control boundaries
-  const float tolerance = 4.0f;
 
+  //Calculus operations
   currentTime = micros();
   dt = ((double)(currentTime - previousTime))/(1.0e6);
   previousTime = currentTime;
   error = destiny - currentPosition; //Check*
 
   //Derivative & Integral
-  Dedt = (error - previousError)/(dt);
+  Dedt = (error - previousError)/dt;
   Iedt = Iedt + (error * dt);
+
+  //Control u(t) signal
+  signal = (Kp * error) + (Kd * Dedt) + (Ki * Iedt);
 
   if(index == 0)
     LPError = error;
   if(index == 1)
-    RPError = error;
-
-  //Control u(t) signal
-  signal = (Kp * error) + (Kd * Dedt) + (Ki * Iedt);
+    RPError	 = error;
 
   return signal;
 }
@@ -156,36 +155,127 @@ void StraightMovement(long destiny) //No he probado que funcione
   const float LKp = 6.0f;
   const float LKd = 0.004;
   const float LKi = 0.025f;
+
   const float RKp = 6.0f;
   const float RKd = 0.004;
   const float RKi = 0.025f;
 
   //Left boundaries
-  int minLeftVel = 65;
-  int maxLeftVel = 20;
+  int leftVel[2] = {15, 60};
   //Right boundaries
-  int minRightVel = 65;
-  int maxRightVel = 20;
+  int rightVel[2] = {15, 60};
 
   //Variables
   long leftSignal, rightSignal;
   
   //Left movement
   leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
-  leftSignal = SignalProcessing(leftSignal, minLeftVel, maxLeftVel);
+  leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
   MotorMovement("L", leftSignal);
+
+
+
+
+
   //Right movement
-  rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
-  rightSignal = SignalProcessing(rightSignal, minRightVel, maxRightVel);
-  MotorMovement("R", rightSignal);
+  //rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  //rightSignal = SignalProcessing(rightSignal, , );
+  //MotorMovement("R", rightSignal);
+
+  PlotPID(destiny, LeftCount(), RightCount());
 }
 
 void TurnMovement()
 {
   Serial.print("Nothing");
 }
+/*
+bool MotorPID(long target, char symbol)
+{
+  //Variable declaration 
+  const short motorQuantity = 2;
+  long currentPosition[motorQuantity];
+  long currentTime[motorQuantity];
+  float dt[motorQuantity];
+  int error[motorQuantity];
+  float Dedt[motorQuantity];
+  float uFunction[motorQuantity];
+  long destiny[motorQuantity];
+  bool taskCompleted = true;
+  const float limitVelocity[motorQuantity] = {67.0f, 49.0f}; //69 60
+  const float minVelocity[motorQuantity] = {19.f, 21.0f};
+  
+  //Control constants
+  const float Kp[motorQuantity] = {14.0f, 14.0f};   
+  const float Ki[motorQuantity] = {0.004f, 0.004f};  
+  const float Kd[motorQuantity] = {0.025f, 0.025f};  
 
-//==========PID functions=========
+  //Control boundaries
+  const float tolerance = 4.0f;
+
+  short motor;
+  if(symbol == 'L')
+  {
+    motor = 0; 
+    currentPosition[motor] = LeftCount(); //Time difference
+  }
+  else if(symbol == 'R')
+  {
+    motor = 1;
+    currentPosition[motor] = RightCount(); //Time difference
+  }
+
+  destiny[motor] = target;
+  currentTime[motor] = micros();
+  dt[motor] = ((float)(currentTime[motor] - previousTime[motor]))/(1.0e6);
+  previousTime[motor] = currentTime[motor];
+  error[motor] = currentPosition[motor] - destiny[motor] - (int)du;
+  
+  //Derivative & Integral
+  Dedt[motor] = (error[motor] - previousError[motor])/(dt[motor]);
+  Iedt[motor] = Iedt[motor] + (error[motor] * dt[motor]);
+
+  //PID Control Signal
+  uFunction[motor] = (Kp[motor] * error[motor]) + (Kd[motor] * Dedt[motor]) + (Ki[motor] * Iedt[motor]);
+  uFunction[motor] = ErrorToPWM(target, uFunction[motor]);
+
+  //Signal processing & Plant
+  if(uFunction[motor] > limitVelocity[motor])
+    uFunction[motor] = limitVelocity[motor];
+  else if((uFunction[motor] < minVelocity[motor]) && (uFunction[motor] >= 0))
+    uFunction[motor] = minVelocity[motor];
+  else if((uFunction[motor] < 0) && (uFunction[motor] > -minVelocity[motor])) 
+    uFunction[motor] = -minVelocity[motor];
+  else if(uFunction[motor] < -limitVelocity[motor])
+    uFunction[motor] = -limitVelocity[motor];
+  
+  previousError[motor] = error[motor];
+
+  float delta = 0.01f; //-0.03
+  if(motor == 1)
+    du = ErrorToPWM(target, delta * (uFunction[0] - uFunction[1])) - minVelocity[0];
+
+  if(target < 0)
+    uFunction[motor] *= -1;
+
+  if(abs(error[motor]) > tolerance) //Here
+  {
+    taskCompleted = false;
+    if(symbol == 'L')
+      MotorMovement("L", uFunction[motor]);
+    else if(symbol == 'R')
+      MotorMovement("R", uFunction[motor]);
+  }
+  else
+  {
+    if(symbol == 'L')
+      MotorMovement("LOFF", 0);
+    else if(symbol == 'R')
+      MotorMovement("ROFF", 0);
+    taskCompleted == true;
+  }
+  return taskCompleted;
+}*/
 
 void PlotPID(long goal, long value1, long value2)
 {
@@ -251,6 +341,8 @@ void RotatePID(float angle) //Inactive function
     PlotPID(ticks);
   } // */
 }
+
+//==========PID functions=========
 
 void LightFollowerAlgorithm()
 {
