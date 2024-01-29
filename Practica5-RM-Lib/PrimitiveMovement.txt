@@ -1,0 +1,66 @@
+#include <Arduino.h>
+
+void Scroll(float distance)     //Test function
+{
+  //This parameters shows a 10 [cm] scroll
+  const float baseDistance = 10.0f;
+  const float baseTime = 700.0f;
+  const int deviation = 50;
+  const int leftVel = 45;
+  const int rightVel = 38; //54
+  
+  float redefine = abs(distance) / baseDistance;
+
+  if(distance > 999)
+  {
+    MotorMovement("L", rightVel);
+    MotorMovement("R", -leftVel);
+  }
+  else if(distance > 0)
+  {
+    MotorMovement("L", leftVel);
+    MotorMovement("R", -rightVel);
+    delay(int(baseTime * redefine) + deviation);
+    MotorMovement("OFF", 0);
+  }
+  else if(distance < 0) 
+  {
+    MotorMovement("L", -leftVel);
+    MotorMovement("R", rightVel);
+    delay(int(baseTime * redefine) + deviation);
+    MotorMovement("OFF", 0);
+  }
+  else if(distance == 0)
+  {
+    MotorMovement("OFF", 0);
+  }
+  else { }
+}
+
+void RotateRobot(float angle)   //Test function
+{ 
+  //This parameters show a 90 degree rotation
+  const float baseRotation = 90.0f;
+  const float baseTime = 800.0f;
+  const int deviation = 50;
+  const int leftVel = 40;
+  const int rightVel = 40;
+  
+  float redefine = abs(angle) / baseRotation;
+
+  if(angle > 0)
+  {
+    MotorMovement("L", rightVel);
+    MotorMovement("R", leftVel);
+    delay(int(baseTime * redefine) + deviation);
+    MotorMovement("OFF", 0);
+  }
+  else if(angle < 0)
+  {
+    MotorMovement("L", -rightVel);
+    MotorMovement("R", -leftVel);
+    delay(int(baseTime * redefine) + deviation);
+    MotorMovement("OFF", 0);
+  }
+  else{}
+}

@@ -13,14 +13,13 @@ PEREZ YANEZ MIGUEL ANGEL
 const float baseDistance = 10.0f;
 const float baseAngle = 45.0f;
 //Constants
-#define MOTION ScrollPID(0.0f)
-#define FORWARD ScrollPID(baseDistance)
-#define BACK ScrollPID(-baseDistance)
-#define TURNLEFT RotatePID(baseAngle)
-#define TURNRIGHT RotatePID(-baseAngle)
+#define MOTION StraightMovement(5.0f, 0.0f);
+#define FORWARD StraightMovement(10.0f, 0.0f);
+#define BACK StraightMovement(-10.0f, 0.0f);
+#define TURNLEFT StraightMovement(0.0f, 0.0f)   //Check
+#define TURNRIGHT StraightMovement(0.0f, 0.0f)  //Check
 #define STOP MotorMovement("OFF", 0);
 #define MSG Serial.println("Hola mundo!")
-#define INF 1000000
 
 //Mathematic values
 /* WheelDiameter = 4.3f cm
@@ -43,7 +42,7 @@ String commandStr;
 String command1;
 String command2;
 String command3;
-  
+
 void setup() 
 { 
   Serial.begin(9600);  
@@ -67,6 +66,7 @@ void setup()
   digitalWrite(currentBridge, HIGH);  
 }
 
+long accDist = 0;
 void loop()
 {
   //TestInfrared();
@@ -88,7 +88,8 @@ void loop()
   //MotorMovement("R", 45);
   //ObstacleAvoidance();
 
-  StraightMovement(8.0f); 
+  accDist = 0;
+  StraightMovement(8.0f, 0.0f); 
 
   //FORWARD;
   //while(true){}
@@ -130,7 +131,7 @@ long PID(long destiny, long currentPosition, long previousError, int index, floa
   if(index == 0)
     LPError = error;
   if(index == 1)
-    RPError	 = error;
+    RPError	= error;
 
   return signal;
 }
@@ -151,8 +152,7 @@ int SignalProcessing(long signal, int minVelocity, int maxVelocity)
 
 //Function variables
 long startTime = 0;
-
-void StraightMovement(float distance)
+void StraightMovement(float distance, float accumulatedDistance)
 {
   //Variables
   long leftSignal, rightSignal, destiny;
@@ -171,10 +171,9 @@ void StraightMovement(float distance)
   int rightVel[2] = {15, 50};
 
   //Inputs
-  const long tolerance = 5;
-  long settlingTime = 1000; //1 segundo
+  const long tolerance = 10;
 
-  destiny = DistanceToTicks(distance);
+  destiny = DistanceToTicks(distance + accumulatedDistance);
 
   //PID 
   leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
@@ -187,13 +186,15 @@ void StraightMovement(float distance)
   bool leftGoal = (destiny - tolerance < LeftCount()) && (LeftCount() < destiny + tolerance);
   bool rightGoal = (destiny - tolerance < RightCount()) && (RightCount() < destiny + tolerance);
 
-  if(leftGoal || rightGoal) //Aún falta corregir
-    MotorMovement("OFF", 0);
+  if(leftGoal)
+    MotorMovement("LOFF", 0);
   else
-  {
-    MotorMovement("L", leftSignal);
-    MotorMovement("R", rightSignal);
-  }
+   MotorMovement("L", leftSignal);
+
+  if(rightGoal)
+    MotorMovement("ROFF", 0);
+  else
+   MotorMovement("R", rightSignal);
   
   PlotPID(destiny, LeftCount(), RightCount());
 }
@@ -203,70 +204,11 @@ void TurnMovement()
   Serial.print("Nothing");
 }
 
-
 void PlotPID(long goal, long value1, long value2)
 {
   Serial.print("Target:");      Serial.print(goal);         Serial.print(",");
   Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
   Serial.print("RightWheel:");  Serial.print(value2);  Serial.println(","); 
-}
-
-void ScrollPID(float distance) //Inactive funtion
-{
-  /*
-  long ticks = DistanceToTicks(distance);
-  unsigned long startTime;
-  unsigned long currTime = 0;
-  unsigned long settlingTime = 1000; //1 segundo
-
-  while(true)
-  {
-    MotorPID(ticks, 'L');
-    MotorPID(ticks, 'R');
-    if(MotorPID(ticks, 'L') && MotorPID(ticks, 'R'))
-    {
-      startTime = millis();
-      while(currTime < startTime + settlingTime)
-      {
-        currTime = millis();
-        MotorPID(ticks, 'L');
-        MotorPID(ticks, 'R');
-        PlotPID(ticks);
-      }
-      MotorMovement("LOFF", 0);
-      MotorMovement("ROFF", 0); 
-      break; 
-    }
-    PlotPID(ticks);
-  } // */
-}
-
-void RotatePID(float angle) //Inactive function
-{
-  /*
-  long ticks = AngleToTicks(angle);
-  unsigned long startTime;
-  unsigned long currTime = 0;
-  unsigned long settlingTime = 1000; //1 segundo
-
-  while(true)
-  {
-    MotorPID(-ticks, 'L');
-    MotorPID(ticks, 'R');
-    if(MotorPID(-ticks, 'L') && MotorPID(ticks, 'R'))
-    {
-      startTime = millis();
-      while(currTime < startTime + settlingTime)
-      {
-        currTime = millis();
-        MotorPID(-ticks, 'L');
-        MotorPID(ticks, 'R');
-        PlotPID(ticks);
-      }
-      break; 
-    }
-    PlotPID(ticks);
-  } // */
 }
 
 //==========PID functions=========
@@ -297,120 +239,35 @@ void LightFollowerAlgorithm()
   //  STOP;
 }
 
-void Scroll(float distance)     //Test function
+void MotorMovement(String command, int speedPWM)
 {
-  //This parameters shows a 10 [cm] scroll
-  const float baseDistance = 10.0f;
-  const float baseTime = 700.0f;
-  const int deviation = 50;
-  const int leftVel = 45;
-  const int rightVel = 38; //54
-  
-  float redefine = abs(distance) / baseDistance;
-
-  if(distance > 999)
-  {
-    MotorMovement("L", rightVel);
-    MotorMovement("R", -leftVel);
-  }
-  else if(distance > 0)
-  {
-    MotorMovement("L", leftVel);
-    MotorMovement("R", -rightVel);
-    delay(int(baseTime * redefine) + deviation);
-    MotorMovement("OFF", 0);
-  }
-  else if(distance < 0) 
-  {
-    MotorMovement("L", -leftVel);
-    MotorMovement("R", rightVel);
-    delay(int(baseTime * redefine) + deviation);
-    MotorMovement("OFF", 0);
-  }
-  else if(distance == 0)
-  {
-    MotorMovement("OFF", 0);
-  }
-  else { }
-}
-
-void RotateRobot(float angle)   //Test function
-{ 
-  //This parameters show a 90 degree rotation
-  const float baseRotation = 90.0f;
-  const float baseTime = 800.0f;
-  const int deviation = 50;
-  const int leftVel = 40;
-  const int rightVel = 40;
-  
-  float redefine = abs(angle) / baseRotation;
-
-  if(angle > 0)
-  {
-    MotorMovement("L", rightVel);
-    MotorMovement("R", leftVel);
-    delay(int(baseTime * redefine) + deviation);
-    MotorMovement("OFF", 0);
-  }
-  else if(angle < 0)
-  {
-    MotorMovement("L", -rightVel);
-    MotorMovement("R", -leftVel);
-    delay(int(baseTime * redefine) + deviation);
-    MotorMovement("OFF", 0);
-  }
-  else{}
-}
-
-void MotorMovement(String command, int speedPWM) 
-{
-  //Allows motor movement, SpeedPWM: Range[-127, 127]
   /*
-  Serial.print("Command: ");
-  Serial.print(command);
-  Serial.print(", ");
-  Serial.println(speedPWM); // */
-
-  if(command == "L" || command == "R") //Can be tweaked
-  {
-    if(-10 < speedPWM && speedPWM < 10)
+  Allows control of the motors
+  Command:    L/R/LOFF/ROFF/OFF
+  Speed PWM:  Integer in range [-127, 127]
+  */
+  if(command == "L" || command == "R") 
+    if(-12 < speedPWM && speedPWM < 12)
     {
-      if(command == "L") 
-        MotorMovement("LOFF", 0);
-      else if(command == "R")
-        MotorMovement("ROFF", 0);
+      if(command == "L")      { MotorMovement("LOFF", 0); }
+      else if(command == "R") { MotorMovement("ROFF", 0); }
       return;
-    }  
-  }
+    }
   
   speedPWM = Map(speedPWM);
 
   if(command == "L")
-  {
-    digitalWrite(pinPWM1, HIGH);
-    analogWrite(leftMotor, -speedPWM);  
-  }
+  { digitalWrite(pinPWM1, HIGH);    analogWrite(leftMotor, -speedPWM);  }
   else if(command == "R")
-  {
-    digitalWrite(pinPWM2, HIGH);
-    analogWrite(rightMotor, speedPWM);
-  }
+  { digitalWrite(pinPWM2, HIGH);    analogWrite(rightMotor, speedPWM);  }
   else if(command == "LOFF")
-  {
-    digitalWrite(leftMotor, LOW);
-    digitalWrite(pinPWM1, LOW); 
-  }
+  { digitalWrite(leftMotor, LOW);   digitalWrite(pinPWM1, LOW);         }
   else if(command == "ROFF")
-  {
-    digitalWrite(rightMotor, LOW);
-    digitalWrite(pinPWM2, LOW); 
-  }
+  { digitalWrite(rightMotor, LOW);  digitalWrite(pinPWM2, LOW);         }
   else if(command == "OFF")
   {
-    digitalWrite(leftMotor, LOW);
-    digitalWrite(pinPWM1, LOW);
-    digitalWrite(rightMotor, LOW);
-    digitalWrite(pinPWM2, LOW); 
+    digitalWrite(leftMotor, LOW);     digitalWrite(pinPWM1, LOW);
+    digitalWrite(rightMotor, LOW);    digitalWrite(pinPWM2, LOW); 
   }
   else
     Serial.println("Unknown command!");
@@ -460,15 +317,6 @@ byte MaxLightIndex()
 
 void ObstacleAvoidance() //Obstacle avoidance algorithm 
 {
-  /*  COMMANDS
-  ContactSensor('L', 'R');
-  FORWARD
-  BACK
-  TURNLEFT
-  TURNRIGHT
-  STOP
-  */
-
   int state = 0;
 
   state = 3 - (ContactSensor('L') * 2 + ContactSensor('R') * 1);
@@ -501,6 +349,14 @@ void ObstacleAvoidance() //Obstacle avoidance algorithm
       TURNRIGHT;
       break;
  }
+  /*  COMMANDS
+  ContactSensor('L', 'R');
+  FORWARD
+  BACK
+  TURNLEFT
+  TURNRIGHT
+  STOP
+  */
 }
 
 void SerialTestMotors()
