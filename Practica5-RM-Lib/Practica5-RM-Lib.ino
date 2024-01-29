@@ -150,7 +150,7 @@ int SignalProcessing(long signal, int minVelocity, int maxVelocity)
 }
 
 //Function variables
-long startTime = 4000000000;
+long startTime = 0;
 
 void StraightMovement(float distance)
 {
@@ -162,43 +162,39 @@ void StraightMovement(float distance)
   const float LKd = 0.00;
   const float LKi = 0.0f;
 
-  const float RKp = 6.0f;
-  const float RKd = 0.004;
-  const float RKi = 0.025f;
+  const float RKp = 1.0f;
+  const float RKd = 0.00;
+  const float RKi = 0.0f;
 
   //Velocities
   int leftVel[2]  = {15, 60};
-  int rightVel[2] = {15, 60};
+  int rightVel[2] = {15, 50};
 
   //Inputs
-  const long tolerance = 2;
+  const long tolerance = 5;
   long settlingTime = 1000; //1 segundo
 
   destiny = DistanceToTicks(distance);
 
-
-  //Signals
+  //PID 
   leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
-  //rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  //Signal processing
   leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
-  //rightSignal = SignalProcessing(rightSignal, , );
+  rightSignal = SignalProcessing(rightSignal, rightVel[0], rightVel[1]);
 
   //if(destiny - tolerance < currentPosition < destiny + tolerance)
-  bool leftGoal = ((destiny - tolerance) < LeftCount()) && (LeftCount() < (destiny + tolerance));
-  bool rightGoal = ((destiny - tolerance) < RightCount()) && (RightCount() < (destiny + tolerance));
+  bool leftGoal = (destiny - tolerance < LeftCount()) && (LeftCount() < destiny + tolerance);
+  bool rightGoal = (destiny - tolerance < RightCount()) && (RightCount() < destiny + tolerance);
 
-  if(leftGoal || rightGoal)
-    startTime = micros();
-
-  if(micros() >= startTime + settlingTime) //Correct this fragment
+  if(leftGoal || rightGoal) //Aún falta corregir
     MotorMovement("OFF", 0);
   else
   {
-    Serial.print("Estoy aqui!");
     MotorMovement("L", leftSignal);
-    //MotorMovement("R", rightSignal);
+    MotorMovement("R", rightSignal);
   }
-
+  
   PlotPID(destiny, LeftCount(), RightCount());
 }
 
