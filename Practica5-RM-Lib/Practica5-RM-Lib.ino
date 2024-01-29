@@ -171,7 +171,7 @@ void StraightMovement(float distance)
   int rightVel[2] = {15, 50};
 
   //Inputs
-  const long tolerance = 5;
+  const long tolerance = 10;
   long settlingTime = 1000; //1 segundo
 
   destiny = DistanceToTicks(distance);
@@ -187,13 +187,15 @@ void StraightMovement(float distance)
   bool leftGoal = (destiny - tolerance < LeftCount()) && (LeftCount() < destiny + tolerance);
   bool rightGoal = (destiny - tolerance < RightCount()) && (RightCount() < destiny + tolerance);
 
-  if(leftGoal || rightGoal) //Aún falta corregir
-    MotorMovement("OFF", 0);
+  if(leftGoal)
+    MotorMovement("LOFF", 0);
   else
-  {
-    MotorMovement("L", leftSignal);
-    MotorMovement("R", rightSignal);
-  }
+   MotorMovement("L", leftSignal);
+
+  if(rightGoal)
+    MotorMovement("ROFF", 0);
+  else
+   MotorMovement("R", rightSignal);
   
   PlotPID(destiny, LeftCount(), RightCount());
 }
