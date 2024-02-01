@@ -13,12 +13,12 @@ PEREZ YANEZ MIGUEL ANGEL
 const float baseDistance = 10.0f;
 const float baseAngle = 45.0f;
 //Constants
-#define MOTION StraightMovement(5.0f, 0.0f);
-#define FORWARD StraightMovement(10.0f, 0.0f);
-#define BACK StraightMovement(-10.0f, 0.0f);
-#define TURNLEFT StraightMovement(0.0f, 0.0f)   //Check
-#define TURNRIGHT StraightMovement(0.0f, 0.0f)  //Check
-#define STOP MotorMovement("OFF", 0);
+#define MOTION    MotorMovement("OFF", 0);
+#define FORWARD   MotorMovement("OFF", 0);
+#define BACK      MotorMovement("OFF", 0);
+#define TURNLEFT  MotorMovement("OFF", 0);
+#define TURNRIGHT MotorMovement("OFF", 0);
+#define STOP      MotorMovement("OFF", 0);
 #define MSG Serial.println("Hola mundo!")
 
 //Mathematic values
@@ -42,6 +42,10 @@ String commandStr;
 String command1;
 String command2;
 String command3;
+
+int state = 0;
+float preDistance = 20.0f;
+float dist = 20.0f;
 
 void setup() 
 { 
@@ -88,8 +92,7 @@ void loop()
   //MotorMovement("R", 45);
   //ObstacleAvoidance();
 
-  accDist = 0;
-  StraightMovement(8.0f, 0.0f); 
+  ObstacleAvoidance();
 
   //FORWARD;
   //while(true){}
@@ -152,10 +155,10 @@ int SignalProcessing(long signal, int minVelocity, int maxVelocity)
 
 //Function variables
 long startTime = 0;
-void StraightMovement(float distance, float accumulatedDistance)
+void StraightMovement(long leftPosition, long rightPosition, float finalPosition)
 {
   //Variables
-  long leftSignal, rightSignal, destiny;
+  long leftSignal, rightSignal, leftDestiny, rightDestiny;
 
   //Control constants
   const float LKp = 1.0f;
@@ -167,24 +170,25 @@ void StraightMovement(float distance, float accumulatedDistance)
   const float RKi = 0.0f;
 
   //Velocities
-  int leftVel[2]  = {15, 60};
-  int rightVel[2] = {15, 50};
+  int leftVel[2]  = {15, 45};
+  int rightVel[2] = {15, 35};
 
   //Inputs
-  const long tolerance = 10;
+  const long tolerance = 12;
 
-  destiny = DistanceToTicks(distance + accumulatedDistance);
+  leftDestiny = DistanceToTicks(finalPosition) - leftPosition;
+  rightDestiny = DistanceToTicks(finalPosition) - rightPosition;
 
   //PID 
-  leftSignal = PID(destiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
-  rightSignal = PID(destiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  leftSignal = PID(leftDestiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
+  rightSignal = PID(rightDestiny, RightCount(), RPError, 1, RKp, RKd, RKi);
   //Signal processing
   leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
   rightSignal = SignalProcessing(rightSignal, rightVel[0], rightVel[1]);
 
   //if(destiny - tolerance < currentPosition < destiny + tolerance)
-  bool leftGoal = (destiny - tolerance < LeftCount()) && (LeftCount() < destiny + tolerance);
-  bool rightGoal = (destiny - tolerance < RightCount()) && (RightCount() < destiny + tolerance);
+  bool leftGoal = (leftDestiny - tolerance < LeftCount()) && (LeftCount() < leftDestiny + tolerance);
+  bool rightGoal = (rightDestiny - tolerance < RightCount()) && (RightCount() < rightDestiny + tolerance);
 
   if(leftGoal)
     MotorMovement("LOFF", 0);
@@ -196,7 +200,10 @@ void StraightMovement(float distance, float accumulatedDistance)
   else
    MotorMovement("R", rightSignal);
   
-  PlotPID(destiny, LeftCount(), RightCount());
+  if(leftGoal && rightGoal)
+    preDistance += dist;
+
+  PlotPID(leftDestiny, rightDestiny, LeftCount(), RightCount());
 }
 
 void TurnMovement()
@@ -204,11 +211,21 @@ void TurnMovement()
   Serial.print("Nothing");
 }
 
-void PlotPID(long goal, long value1, long value2)
+void PlotPID(long goal1, long goal2, long value1, long value2)
 {
-  Serial.print("Target:");      Serial.print(goal);         Serial.print(",");
-  Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
-  Serial.print("RightWheel:");  Serial.print(value2);  Serial.println(","); 
+  if(goal1 != goal2)
+  {
+    Serial.print("Target1:");     Serial.print(goal1);    Serial.print(",");
+    Serial.print("Target2:");     Serial.print(goal2);    Serial.print(",");
+    Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
+    Serial.print("RightWheel:");  Serial.print(value2);   Serial.println(","); 
+  }
+  else
+  {
+    Serial.print("Target:");      Serial.print(goal1);    Serial.print(",");
+    Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
+    Serial.print("RightWheel:");  Serial.print(value2);   Serial.println(","); 
+  }
 }
 
 //==========PID functions=========
@@ -317,7 +334,7 @@ byte MaxLightIndex()
 
 void ObstacleAvoidance() //Obstacle avoidance algorithm 
 {
-  int state = 0;
+  state = 0;
 
   state = 3 - (ContactSensor('L') * 2 + ContactSensor('R') * 1);
 
@@ -328,7 +345,8 @@ void ObstacleAvoidance() //Obstacle avoidance algorithm
   switch(state)
   {
     case 0: //No obstacle in front
-      LightFollowerAlgorithm();
+      StraightMovement(LeftCount(), RightCount(), preDistance); 
+      //LightFollowerAlgorithm();
       break;
     case 1: //Obstacle to the right
       STOP;
