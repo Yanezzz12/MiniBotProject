@@ -46,6 +46,7 @@ String command3;
 int state = 0;
 float preDistance = 20.0f;
 float dist = 20.0f;
+float angle = AngleToTicks(90);
 
 void setup() 
 { 
@@ -92,7 +93,9 @@ void loop()
   //MotorMovement("R", 45);
   //ObstacleAvoidance();
 
-  ObstacleAvoidance();
+  //ObstacleAvoidance();
+  TurnMovement(LeftCount(), RightCount(), 90.0f);
+  //StraightMovement(LeftCount(), RightCount(), 15.0f);
 
   //FORWARD;
   //while(true){}
@@ -139,7 +142,7 @@ long PID(long destiny, long currentPosition, long previousError, int index, floa
   return signal;
 }
 
-int SignalProcessing(long signal, int minVelocity, int maxVelocity)
+int SignalProcessing(long signal, int minVelocity, int maxVelocity) //Checar lógica en motores inversos
 {
   if(signal > maxVelocity)
     signal = maxVelocity;
@@ -153,8 +156,6 @@ int SignalProcessing(long signal, int minVelocity, int maxVelocity)
   return signal;
 }
 
-//Function variables
-long startTime = 0;
 void StraightMovement(long leftPosition, long rightPosition, float finalPosition)
 {
   //Variables
@@ -170,7 +171,7 @@ void StraightMovement(long leftPosition, long rightPosition, float finalPosition
   const float RKi = 0.0f;
 
   //Velocities
-  int leftVel[2]  = {15, 45};
+  int leftVel[2]  = {15, 55};
   int rightVel[2] = {15, 35};
 
   //Inputs
@@ -179,7 +180,7 @@ void StraightMovement(long leftPosition, long rightPosition, float finalPosition
   leftDestiny = DistanceToTicks(finalPosition) - leftPosition;
   rightDestiny = DistanceToTicks(finalPosition) - rightPosition;
 
-  //PID 
+  //PID
   leftSignal = PID(leftDestiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
   rightSignal = PID(rightDestiny, RightCount(), RPError, 1, RKp, RKd, RKi);
   //Signal processing
@@ -203,32 +204,63 @@ void StraightMovement(long leftPosition, long rightPosition, float finalPosition
   if(leftGoal && rightGoal)
     preDistance += dist;
 
-  PlotPID(leftDestiny, rightDestiny, LeftCount(), RightCount());
+  Serial.print("Destiny:");   Serial.print(leftDestiny);   Serial.print(",");
+  Serial.print("LeftWheel:");   Serial.print(LeftCount());   Serial.print(",");
+  Serial.print("RightWheel:");  Serial.print(RightCount());   Serial.println(",");
 }
 
-void TurnMovement()
+void TurnMovement(long leftPosition, long rightPosition, float finalAngle)
 {
-  Serial.print("Nothing");
-}
+  //Variables
+  long leftSignal, rightSignal, leftDestiny, rightDestiny;
 
-void PlotPID(long goal1, long goal2, long value1, long value2)
-{
-  if(goal1 != goal2)
-  {
-    Serial.print("Target1:");     Serial.print(goal1);    Serial.print(",");
-    Serial.print("Target2:");     Serial.print(goal2);    Serial.print(",");
-    Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
-    Serial.print("RightWheel:");  Serial.print(value2);   Serial.println(","); 
-  }
+  //Control constants
+  const float LKp = 0.9f;
+  const float LKd = 0.2f;
+  const float LKi = 0.01f;
+
+  const float RKp = 1.0f;
+  const float RKd = 0.0f;
+  const float RKi = 0.0f;
+
+  //Velocities
+  int leftVel[2]  = {15, 50};
+  int rightVel[2] = {15, 35};
+
+  //Inputs
+  const long tolerance = 12;
+
+  leftDestiny =  -(AngleToTicks(finalAngle) - leftPosition);
+  rightDestiny = AngleToTicks(finalAngle) - rightPosition;
+
+  //PID
+  leftSignal = PID(leftDestiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
+  rightSignal = PID(rightDestiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+  //Signal processing
+  leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
+  rightSignal = SignalProcessing(rightSignal, rightVel[0], rightVel[1]);
+
+  //if(destiny - tolerance < currentPosition < destiny + tolerance)
+  bool leftGoal = (leftDestiny - tolerance < LeftCount()) && (LeftCount() < leftDestiny + tolerance);
+  bool rightGoal = (rightDestiny - tolerance < RightCount()) && (RightCount() < rightDestiny + tolerance);
+
+  if(leftGoal)
+    MotorMovement("LOFF", 0);
   else
-  {
-    Serial.print("Target:");      Serial.print(goal1);    Serial.print(",");
-    Serial.print("LeftWheel:");   Serial.print(value1);   Serial.print(",");
-    Serial.print("RightWheel:");  Serial.print(value2);   Serial.println(","); 
-  }
+   MotorMovement("L", leftSignal);
+
+  if(rightGoal)
+    MotorMovement("ROFF", 0);
+  else
+   MotorMovement("R", rightSignal);
+
+  Serial.print("LeftDestiny:");   Serial.print(leftDestiny);   Serial.print(",");
+  Serial.print("RightDestiny:");   Serial.print(rightDestiny);   Serial.print(",");
+  Serial.print("LeftWheel:");   Serial.print(LeftCount());   Serial.print(",");
+  Serial.print("RightWheel:");  Serial.print(RightCount());   Serial.println(",");
 }
 
-//==========PID functions=========
+//==========END of PID functions=========
 
 void LightFollowerAlgorithm()
 {
@@ -345,6 +377,7 @@ void ObstacleAvoidance() //Obstacle avoidance algorithm
   switch(state)
   {
     case 0: //No obstacle in front
+      //TurnMovement(LeftCount(), RightCount(), 90.0f);
       StraightMovement(LeftCount(), RightCount(), preDistance); 
       //LightFollowerAlgorithm();
       break;
