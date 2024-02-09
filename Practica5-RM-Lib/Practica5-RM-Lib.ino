@@ -206,10 +206,62 @@ void StraightMovement(long leftPosition, long rightPosition, float finalPosition
   PlotPID(leftDestiny, rightDestiny, LeftCount(), RightCount());
 }
 
-void TurnMovement()
+// Allows the robot to turn 
+void TurnMovement(float finalPosition)
 {
-  Serial.print("Nothing");
+    // Variables
+    long leftSignal, rightSignal, leftDestiny, rightDestiny;
+
+    // Constantes de control PID
+    const float LKp = 1.0f;
+    const float LKd = 0.00;
+    const float LKi = 0.0f;
+    const float RKp = 1.0f;
+    const float RKd = 0.00;
+    const float RKi = 0.0f;
+
+    // Velocidades
+    int leftVel[2] = {15, 45};
+    int rightVel[2] = {15, 35};
+
+    // Inputs
+    const long tolerance = 12;
+
+    // Se llama a la función AngleToTicks para controlar el giro en cada rueda, y se asigna a la variable leftDestiny y rightDestiny
+    leftDestiny = AngleToTicks(finalPosition) - LeftCount();
+    rightDestiny = AngleToTicks(finalPosition) - RightCount();
+
+    // PID para cada rueda
+    leftSignal = PID(leftDestiny, LeftCount(), LPError, 0, LKp, LKd, LKi);
+    rightSignal = PID(rightDestiny, RightCount(), RPError, 1, RKp, RKd, RKi);
+
+    // Procesamiento de la señal para evitar velocidades extremas
+    leftSignal = SignalProcessing(leftSignal, leftVel[0], leftVel[1]);
+    rightSignal = SignalProcessing(rightSignal, rightVel[0], rightVel[1]);
+
+    // Verificar si se ha alcanzado la posición angular deseada
+    bool leftGoal = (leftDestiny - tolerance < LeftCount()) && (LeftCount() < leftDestiny + tolerance);
+    bool rightGoal = (rightDestiny - tolerance < RightCount()) && (RightCount() < rightDestiny + tolerance);
+
+    // Detener las ruedas si se alcanza la posición angular deseada
+    if (leftGoal)
+        MotorMovement("LOFF", 0);
+    else
+        MotorMovement("L", -leftSignal); // Se cambia el signo para cambiar el sentido de giro en la rueda y girar a la izquierda
+
+    if (rightGoal)
+        MotorMovement("ROFF", 0);
+    else
+        MotorMovement("R", rightSignal);
+
+    // Si se alcanza la posición angular deseada en ambas ruedas, actualiza alguna variable según sea necesario
+    if (leftGoal && rightGoal)
+        preDistance += dist;
+
+    // Plotear para propósitos de depuración
+    PlotPID(leftDestiny, rightDestiny, LeftCount(), RightCount());
 }
+
 
 void PlotPID(long goal1, long goal2, long value1, long value2)
 {
